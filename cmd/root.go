@@ -21,27 +21,28 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/rajatjindal/k8s-custom-controller/pkg/client"
+	"github.com/rajatjindal/k8s-custom-controller/config"
+	"github.com/Sirupsen/logrus"
 )
 
 var cfgFile string
 
-// RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "k8s-custom-controller",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "A k8s controller that react on anything with annotation test.alpha.kubernetes.io/service-name",
+	Long: `A k8s controller which react as soon as a new service is created with annotation
+and takes some action on it.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		conf, err := config.Validate()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
+		client.Run(conf)
+	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -51,38 +52,23 @@ func Execute() {
 
 func init() { 
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.k8s-custom-controller.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-// initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	if cfgFile != "" {
-		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		// Search config in home directory with name ".k8s-custom-controller" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".k8s-custom-controller")
+		viper.SetConfigName(config.ConfigFileName)
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
